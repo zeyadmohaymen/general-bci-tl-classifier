@@ -1,0 +1,3 @@
+- Riemannian Procrustes Analysis (RPA) approach: https://hal.science/hal-01971856/document
+- Label Alignment approach: https://arxiv.org/pdf/1912.01166
+- Autoencoder transformer approach: https://doi.org/10.1016/j.eswa.2022.118901
