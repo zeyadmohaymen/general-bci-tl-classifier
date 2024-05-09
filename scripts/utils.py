@@ -34,17 +34,3 @@ def windowing(data, window_size, func):
         windowed_data.extend(func(window))
 
     return np.array(windowed_data)
-
-# def apply_to_epochs(epochs, func):
-#     # Apply a function to each epoch
-#     data = epochs.get_data()
-#     new_data = []
-
-#     for epoch_data in data:
-#         new_epoch_data = func(epoch_data)
-#         new_data.append(new_epoch_data)
-
-#     new_data = np.array(new_data)
-#     new_epochs = reconstruct_epochs(epochs, new_data)
-
-#     return new_epochs
