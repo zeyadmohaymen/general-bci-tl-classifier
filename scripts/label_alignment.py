@@ -121,8 +121,8 @@ class LabelAlignment:
         target_segregated_indices = self._segregate_epochs(self.target_epochs)
 
         # Compute SPD covariance matrices for source and target domains
-        source_covs = Covariances(estimator='oas').transform(source_data)
-        target_covs = Covariances(estimator='oas').transform(target_data)
+        source_covs = Covariances(estimator='oas').fit_transform(source_data)
+        target_covs = Covariances(estimator='oas').fit_transform(target_data)
 
         # Compute the mean covariance matrices for each class in source and target domains
         source_mean_covs = self._classes_mean_covs(source_segregated_indices, source_covs)

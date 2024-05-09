@@ -7,9 +7,10 @@ from mne import Epochs
 # from pymultifracs.mfa import mf_analysis_full
 
 
-class FeatureExtractor:
+class SouvikFeatureExtractor:
     """
-    The FeatureExtractor class provides methods to extract features from EEG data.
+    The FeatureExtractor class implementing methods described in Souvik's paper.
+    Paper can be found at: https://doi.org/10.1016/j.eswa.2022.118901
     Each feature vector is composed of AR coefficients and wavelet packet entropies computed from a sliding window.
     """
     def __init__(self, ar=True, wpe=True, window_size=250, ar_order=6, wavelet='haar', max_level=4):
