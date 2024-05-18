@@ -25,7 +25,7 @@ class LabelAlignment:
         if len(source_classes) != len(target_classes):
             raise ValueError('Source and target domains must have the same number of classes.')
 
-    def _segregate_epochs(epochs):
+    def _segregate_epochs(self, epochs):
         """
         Segregates the epochs based on their labels.
 
@@ -51,7 +51,7 @@ class LabelAlignment:
 
         return segregated_indices
     
-    def _classes_mean_covs(segregated_indices, covs):
+    def _classes_mean_covs(self, segregated_indices, covs):
         """
         Compute the mean covariance matrices for each class.
 
@@ -73,7 +73,7 @@ class LabelAlignment:
 
         return mean_covs
     
-    def _compute_alignment_matrices(source_mean_covs, target_mean_covs):
+    def _compute_alignment_matrices(self, source_mean_covs, target_mean_covs):
         """
         Compute alignment matrix for each source class to its corresponding target class.
 

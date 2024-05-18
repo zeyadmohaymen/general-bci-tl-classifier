@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import lfilter
 from statsmodels.regression.linear_model import burg
 from pywt import WaveletPacket
-from utils import calculate_shannon_entropy, windowing
+from scripts.utils import calculate_shannon_entropy, windowing
 from mne import Epochs
 # from pymultifracs.mfa import mf_analysis_full
 
@@ -80,7 +80,7 @@ class SouvikFeatureExtractor:
         no_trials = epoch_data.shape[0]
         no_channels = epoch_data.shape[1]
 
-        feature_vectors = np.zeros(epoch_data.shape)
+        feature_vectors = np.zeros((no_trials, no_channels, 88))
 
         for trial in range(no_trials):
             for channel in range(no_channels):
