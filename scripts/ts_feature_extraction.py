@@ -1,22 +1,39 @@
 from pyriemann.tangentspace import TangentSpace
 from pyriemann.estimation import Covariances
 
-def tangent_space_mapping(epochs_data):
-    """
-    Compute the tangent space mapping for the given epochs data.
+class TangentSpaceMapping:
 
-    Parameters:
-    epochs_data (array-like): The input epochs data.
+    def __init__(self):
+        self.ts = TangentSpace()
 
-    Returns:
-    array-like: The tangent space mapping of the input epochs data.
-    """
+    def transform(self, epochs_data):
+        """
+        Compute the tangent space mapping for the given epochs data.
+
+        Parameters:
+        epochs_data (array-like): The input epochs data.
+
+        Returns:
+        array-like: The tangent space mapping of the input epochs data.
+        """
+        
+        # Compute SPD covariance matrices
+        covs = Covariances(estimator='oas').fit_transform(epochs_data)
+
+        # Compute tangent space mapping
+        tangent_space = self.ts.fit_transform(covs)
+
+        return tangent_space
     
-    # Compute SPD covariance matrices
-    covs = Covariances(estimator='oas').fit_transform(epochs_data)
+    def fit_transform(self, epochs_data, _=None):
+        """
+        Fit the given epochs data and compute the tangent space mapping.
 
-    # Compute tangent space mapping
-    ts = TangentSpace()
-    tangent_space = ts.fit_transform(covs)
+        Parameters:
+        epochs_data (array-like): The input epochs data.
 
-    return tangent_space
+        Returns:
+        array-like: The tangent space mapping of the input epochs data.
+        """
+        
+        return self.transform(epochs_data)

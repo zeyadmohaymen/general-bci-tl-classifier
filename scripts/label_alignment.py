@@ -5,48 +5,86 @@ from pyriemann.estimation import Covariances
 
 class LabelAlignment:
     """
-    A domain adaptation technique that transfers a source domain to a target domain. This is done by aligning 
-    individual source classes to corresponding target classes.
+    A domain adaptation technique that transfers a source domain to a target domain by aligning individual source classes to corresponding target classes.
+
+    Parameters:
+        target_epochs (mne.Epochs): The target epochs data.
+        concat (bool): Whether to concatenate the target epochs with the aligned source. Default is False.
+
+    Methods:
+        fit(source_data, source_events):
+            Fits the source domain to the target domain by computing alignment matrices.
+            Args:
+                source_data (ndarray): The source epochs data.
+                source_events (ndarray): The source events data.
+            Returns:
+                self
+
+        transform(source_data):
+            Transforms the individual source classes by aligning them with corresponding target classes.
+            Args:
+                source_data (ndarray): The source epochs data.
+            Returns:
+                aligned_epochs (ndarray): Aligned epochs.
+                aligned_events (ndarray): Aligned events.
+
+        fit_transform(source_data, source_events):
+            Fits the source domain to the target domain and transforms the source data.
+            Args:
+                source_data (ndarray): The source epochs data.
+                source_events (ndarray): The source events data.
+            Returns:
+                aligned_epochs (ndarray): Aligned epochs.
+                aligned_events (ndarray): Aligned events.
     """
 
-    def __init__(self, source_epochs, target_epochs):
-        self.source_epochs = source_epochs
-        self.target_epochs = target_epochs
+    def __init__(self, target_epochs: mne.Epochs, concat=False):
+        """
+        Initialize the LabelAlignment object.
 
-        self._validate()
+        Parameters:
+        - target_epochs (mne.Epochs): The target epochs to align the labels with.
+        - concat (bool): Whether to concatenate the source and target data. Default is False.
+        """
+        self.source_data = None
+        self.source_events = None
+
+        self.target_data = target_epochs.get_data(copy=True)
+        self.target_events = target_epochs.events[:, -1]
+
+        self.concat = concat
+
+        self.alignment_matrices = None
 
     def _validate(self):
         '''
         Validate source and target domains have the same number of classes.
         '''
-        source_classes = np.unique(self.source_epochs.events[:, -1])
-        target_classes = np.unique(self.target_epochs.events[:, -1])
+        source_classes = np.unique(self.source_events)
+        target_classes = np.unique(self.target_events)
 
         if len(source_classes) != len(target_classes):
             raise ValueError('Source and target domains must have the same number of classes.')
 
-    def _segregate_epochs(self, epochs):
+    def _segregate_epochs(self, epoch_events):
         """
         Segregates the epochs based on their labels.
 
         Parameters:
-        epochs (numpy.ndarray): The epochs data.
+        epochs (numpy.ndarray): The epochs events.
 
         Returns:
         dict: A dictionary containing the segregated indices for each label.
         """
 
-        # Get the labels from the events
-        labels = epochs.events[:, -1]
-
         # Get the unique classes
-        classes = np.unique(labels)
+        classes = np.unique(epoch_events)
 
         # Create an empty dictionary to store the segregated indices
         segregated_indices = {label: [] for label in classes}
 
         # Add indices to segregate epochs based on their labels
-        for i, label in enumerate(labels):
+        for i, label in enumerate(epoch_events):
             segregated_indices[label].append(i)
 
         return segregated_indices
@@ -104,44 +142,80 @@ class LabelAlignment:
             alignment_matrices[source_label] = alignment_matrix
 
         return alignment_matrices
-
-    def transform(self):
+    
+    def fit(self, source_data, source_events):
         """
-        Transforms the individual source class by aligning them with corresponding target classes.
+        Fit the source domain to the target domain.
+
+        Args:
+            source_data (numpy.ndarray): The source data.
+            source_events (numpy.ndarray): The source events.
 
         Returns:
-            aligned_source_epochs (ndarray): Aligned source epochs.
+            self: The fitted LabelAlignment instance.
         """
-        source_data = self.source_epochs.get_data(copy=True)
-        source_labels = self.source_epochs.events[:, -1]
-        target_data = self.target_epochs.get_data(copy=True)
+        self.source_data = source_data
+        self.source_events = source_events
+
+        self._validate()
 
         # Segregate epochs based on labels for source and target domains
-        source_segregated_indices = self._segregate_epochs(self.source_epochs)
-        target_segregated_indices = self._segregate_epochs(self.target_epochs)
+        source_segregated_indices = self._segregate_epochs(self.source_events)
+        target_segregated_indices = self._segregate_epochs(self.target_events)
 
         # Compute SPD covariance matrices for source and target domains
-        source_covs = Covariances(estimator='oas').fit_transform(source_data)
-        target_covs = Covariances(estimator='oas').fit_transform(target_data)
+        source_covs = Covariances(estimator='oas').fit_transform(self.source_data)
+        target_covs = Covariances(estimator='oas').fit_transform(self.target_data)
 
         # Compute the mean covariance matrices for each class in source and target domains
         source_mean_covs = self._classes_mean_covs(source_segregated_indices, source_covs)
         target_mean_covs = self._classes_mean_covs(target_segregated_indices, target_covs)
 
         # Compute the alignment matrices for each source class to its corresponding target class
-        alignment_matrices = self._compute_alignment_matrices(source_mean_covs, target_mean_covs)
+        self.alignment_matrices = self._compute_alignment_matrices(source_mean_covs, target_mean_covs)
 
+        return self
+
+    def transform(self, source_data):
+        """
+        Transforms the source data by aligning the epochs using the alignment matrices.
+
+        Args:
+            source_data (list): The source data containing the epochs to be aligned.
+
+        Returns:
+            tuple: A tuple containing the aligned epochs and the corresponding events.
+        """
         # Align the source epochs using the alignment matrices
         aligned_source_epochs = []
 
-        for trial, label in zip(source_data, source_labels):
-            alignment_matrix = alignment_matrices[label]
+        for trial, label in zip(source_data, self.source_events):
+            alignment_matrix = self.alignment_matrices[label]
             aligned_trial = np.dot(alignment_matrix, trial)
             aligned_source_epochs.append(aligned_trial)
 
-        aligned_source_epochs = np.array(aligned_source_epochs)
+        aligned_epochs = np.array(aligned_source_epochs)
+        aligned_events = self.source_events
 
-        return aligned_source_epochs
+        if self.concat:
+            aligned_epochs = np.concatenate([aligned_epochs, self.target_data])
+            aligned_events = np.concatenate([self.source_events, self.target_events])
+
+        return aligned_epochs, aligned_events
+    
+    def fit_transform(self, source_data, source_events):
+        """
+        Fits the model to the source data and events, and then transforms the source data.
+
+        Parameters:
+            source_data (array-like): The input source data.
+            source_events (array-like): The input source events.
+
+        Returns:
+            transformed_data (tuple): The transformed source data and events.
+        """
+        self.fit(source_data, source_events)
+        return self.transform(source_data)
 
 
 # TODO: Maybe we can refactor the code to use the LabelData class instead of using dictionaries.
