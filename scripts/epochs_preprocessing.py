@@ -212,7 +212,7 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
     
-    def transform(self, epochs):
+    def transform(self, epochs: Epochs):
         """
         Transform the epochs by segmenting them into smaller windows.
 
