@@ -1,7 +1,7 @@
 from mne import Epochs
 import numpy as np
 
-def reconstruct_epochs(epochs: Epochs, new_data):
+def reconstruct_epochs(epochs: Epochs, new_data, new_events=None):
     """
     Copy the input epochs object with new data.
 
@@ -14,6 +14,8 @@ def reconstruct_epochs(epochs: Epochs, new_data):
     """
     new_epochs = epochs.copy()
     new_epochs._data = new_data
+    if new_events is not None:
+        new_epochs.events = new_events
     return new_epochs
 
 def calculate_shannon_entropy(node_coeffs):
