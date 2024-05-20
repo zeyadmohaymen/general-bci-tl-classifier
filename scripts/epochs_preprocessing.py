@@ -1,5 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-from mne import Epochs
+from mne import Epochs, merge_events
 import numpy as np
 from scripts.utils import reconstruct_epochs
 
@@ -11,7 +11,6 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
     -----------
     counter_class : str, optional
         The counter class to use for encoding. Must be either 'rest' or 'other'.
-        Defaults to 'rest'.
 
     Attributes:
     -----------
@@ -32,7 +31,7 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
         The transformed epochs data with encoded events.
     """
 
-    def __init__(self, counter_class="rest"):
+    def __init__(self, counter_class):
         if counter_class not in ["rest", "other"]:
             raise ValueError("counter_class must be either 'rest' or 'other'")
         self.counter_class = counter_class
@@ -54,42 +53,63 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
         epochs : Epochs
             The transformed epochs data with encoded events.
         """
-        # Get the events from the epochs data
-        events = epochs.events[:, -1]
-        
-        # Initialize an array to store the transformed events
-        transformed_events = np.zeros_like(events)
         
         # Get the event IDs from the epochs object
         event_ids = epochs.event_id
 
-        # Get the ID and indices of the 'feet' event
-        feet_id = event_ids["feet"]
-        feet_indices = np.where(events == feet_id)[0]
-        
-        # Set the transformed events to 1 for 'feet' events
-        transformed_events[feet_indices] = 1
-
         # Check if the counter class is 'rest'
         if self.counter_class == "rest":
-            # Get the ID and indices of the 'rest' event
+            # Select only the 'rest' and 'feet' epochs
+            selected_epochs = epochs["rest", "feet"]
+            events = selected_epochs.events[:, -1]
+            
+            # Get respective "rest" and "feet" ids
             rest_id = event_ids["rest"]
-            rest_indices = np.where(events == rest_id)[0]
-            
-            # Set the transformed events to 0 for 'rest' events
-            transformed_events[rest_indices] = 0
-        else:
-            # Get the indices of events other than 'feet'
-            other_indices = np.where(events != feet_id)[0]
-            
-            # Set the transformed events to 0 for other events
-            transformed_events[other_indices] = 0
+            feet_id = event_ids["feet"]
 
-        # Update the events in the epochs object with the transformed events
-        epochs.events[:, -1] = transformed_events
+            # Extract their indices
+            rest_indices = np.where(events == rest_id)[0]
+            feet_indices = np.where(events == feet_id)[0]
+
+            # Set "rest" to 0 and "feet" to 1
+            transformed_events = np.zeros_like(events)
+            transformed_events[rest_indices] = 0
+            transformed_events[feet_indices] = 1
+
+            # Update the events in the epochs object with the transformed events
+            selected_epochs.events[:, -1] = transformed_events
+
+            # Update the event IDs in the selected epochs object
+            selected_epochs.event_id = {"rest": 0, "feet": 1}
+
+            print("Epochs after event encoding [rest vs feet]", selected_epochs)
+
+            return selected_epochs
         
-        # Return the modified epochs object
-        return epochs
+        # Check if the counter class is 'other' 
+        else:
+            events = epochs.events[:, -1]
+            feet_id = event_ids["feet"]
+
+            # Extract indices if "feet" vs everything else
+            feet_indices = np.where(events == feet_id)[0]
+            not_feet_indices = np.where(events != feet_id)[0]
+
+            # Set "not feet" to 0 and "feet" to 1
+            transformed_events = np.zeros_like(events)
+            transformed_events[not_feet_indices] = 0
+            transformed_events[feet_indices] = 1
+
+            # Update the events in the epochs object with the transformed events
+            epochs.events[:, -1] = transformed_events
+
+            # Update the event IDs in the epochs object
+            epochs.event_id = {"not feet": 0, "feet": 1}
+
+            print("Epochs after event encoding [not feet vs feet]", epochs)
+
+            return epochs
+            
     
 class EventsEqualizer(BaseEstimator, TransformerMixin):
     """
@@ -109,7 +129,7 @@ class EventsEqualizer(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, epochs: Epochs):
-        return epochs.equalize_event_counts()
+        return epochs.equalize_event_counts()[0]
     
 class Resampler(BaseEstimator, TransformerMixin):
     """
@@ -176,6 +196,7 @@ class Cropper(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, epochs: Epochs):
+        print("Cropped Epochs to: ", self.tmin, "s -- ", self.tmax, "s")
         return epochs.crop(self.tmin, self.tmax)
     
 class EpochsSegmenter(BaseEstimator, TransformerMixin):
@@ -237,7 +258,7 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         step_samples = int(n_samples * (1 - self.overlap))
         
         # Get the original data from the epochs object
-        data = epochs.get_data()
+        data = epochs.get_data(copy=False)
         n_epochs, n_channels, n_times = data.shape
         
         # Calculate the number of windows per epoch
@@ -265,6 +286,8 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         
         # Create a new epochs object with the segmented data and events
         new_epochs = reconstruct_epochs(epochs, new_data, new_events)
+
+        print("Applied Epochs Segmentation with ", self.window_size, "s and ", self.overlap*100, "% overlap", new_epochs)
         
         # Return the new epochs object
         return new_epochs
