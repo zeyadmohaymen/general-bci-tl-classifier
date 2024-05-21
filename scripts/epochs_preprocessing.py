@@ -53,7 +53,9 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
         epochs : Epochs
             The transformed epochs data with encoded events.
         """
-        
+        # Copy the epochs object to avoid modifying the original data
+        epochs = epochs.copy()
+
         # Get the event IDs from the epochs object
         event_ids = epochs.event_id
 
@@ -82,7 +84,8 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the selected epochs object
             selected_epochs.event_id = {"rest": 0, "feet": 1}
 
-            print("Epochs after event encoding [rest vs feet]", selected_epochs)
+            print("Epochs after event encoding [rest vs feet]:")
+            print(selected_epochs)
 
             return selected_epochs
         
@@ -106,7 +109,8 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the epochs object
             epochs.event_id = {"not feet": 0, "feet": 1}
 
-            print("Epochs after event encoding [not feet vs feet]", epochs)
+            print("Epochs after event encoding [not feet vs feet]:")
+            print(epochs)
 
             return epochs
             
@@ -129,39 +133,7 @@ class EventsEqualizer(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, epochs: Epochs):
-        return epochs.equalize_event_counts()[0]
-    
-class Resampler(BaseEstimator, TransformerMixin):
-    """
-    A class for resampling epochs data.
-
-    Parameters:
-    -----------
-    sfreq : int, optional
-        The desired sampling frequency for resampling the epochs data. Default is 160.
-
-    Methods:
-    --------
-    fit(X, y=None)
-        Fit the resampler to the data.
-
-    transform(epochs)
-        Resample the input epochs data.
-
-    Returns:
-    --------
-    resampled_epochs : Epochs
-        The resampled epochs data.
-    """
-
-    def __init__(self, sfreq=160):
-        self.sfreq = sfreq
-
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, epochs: Epochs):
-        return epochs.resample(self.sfreq)
+        return epochs.copy().equalize_event_counts()[0]
     
 class Cropper(BaseEstimator, TransformerMixin):
     """
@@ -196,8 +168,8 @@ class Cropper(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, epochs: Epochs):
-        print("Cropped Epochs to: ", self.tmin, "s -- ", self.tmax, "s")
-        return epochs.crop(self.tmin, self.tmax)
+        print("Cropped Epochs to:", self.tmin, "s -", self.tmax, "s")
+        return epochs.copy().crop(self.tmin, self.tmax)
     
 class EpochsSegmenter(BaseEstimator, TransformerMixin):
     """
@@ -248,6 +220,9 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
             The segmented epochs object.
 
         """
+        # Copy the epochs object to avoid modifying the original data
+        epochs = epochs.copy()
+        
         # Get the sampling frequency of the epochs data
         sfreq = epochs.info['sfreq']
         
@@ -287,7 +262,8 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         # Create a new epochs object with the segmented data and events
         new_epochs = reconstruct_epochs(epochs, new_data, new_events)
 
-        print("Applied Epochs Segmentation with ", self.window_size, "s and ", self.overlap*100, "% overlap", new_epochs)
+        print("Applied Epochs Segmentation with", self.window_size, "s and", self.overlap*100, "% overlap")
+        print(new_epochs)
         
         # Return the new epochs object
         return new_epochs
