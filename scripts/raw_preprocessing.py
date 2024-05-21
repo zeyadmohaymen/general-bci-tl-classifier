@@ -135,8 +135,9 @@ class Epochify(BaseEstimator, TransformerMixin):
         The segmented epochs.
     """
 
-    def __init__(self, event_ids, tmin=-1, tmax=4, baseline=None):
+    def __init__(self, event_ids, channels, tmin=-1, tmax=4, baseline=None):
         self.event_ids = event_ids
+        self.channels = channels
         self.tmin = tmin
         self.tmax = tmax
         self.baseline = baseline
@@ -146,7 +147,8 @@ class Epochify(BaseEstimator, TransformerMixin):
     
     def transform(self, raw: Raw):
         print("Segmenting raw data into epochs...")
-        epochs = Epochs(raw, event_id=self.event_ids, tmin=self.tmin, tmax=self.tmax, baseline=self.baseline, preload=True)
+        selected_channels = pick_types(raw.info, include=self.channels, exclude="bads")
+        epochs = Epochs(raw, event_id=self.event_ids, tmin=self.tmin, tmax=self.tmax, picks=selected_channels, baseline=self.baseline, preload=True)
         return epochs
     
 class Resampler(BaseEstimator, TransformerMixin):
