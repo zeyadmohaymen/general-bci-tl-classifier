@@ -1,4 +1,4 @@
-from mne import Epochs
+from mne import Epochs, concatenate_raws
 import numpy as np
 
 def reconstruct_epochs(epochs: Epochs, new_data, new_events=None):
@@ -36,3 +36,28 @@ def windowing(data, window_size, func):
         windowed_data.extend(func(window))
 
     return np.array(windowed_data)
+
+def load_moabb_data(dataset):
+    # Load data from MOABB dataset
+    # data = {'subject_id' :
+        #     {'session_id':
+        #         {'run_id': run}
+        #     }
+        # }
+    sessions = dataset.get_data()
+    raws = []
+    for subject_id, sessions in sessions.items():
+        for session_id, runs in sessions.items():
+            concat = concatenate_raws([run for run in runs.values()])
+            raws.append(concat)
+    return raws
+
+def load_single_moabb_subject(dataset, subject_id):
+    # Load data from MOABB dataset for a single subject
+    sessions = dataset.get_data(subjects=[subject_id])
+    raws = []
+    for session in sessions[subject_id].values():
+        for run in session.values():
+            raws.append(run)
+
+    return concatenate_raws(raws)

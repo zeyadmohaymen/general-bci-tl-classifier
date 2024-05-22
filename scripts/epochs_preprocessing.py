@@ -222,6 +222,11 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         """
         # Copy the epochs object to avoid modifying the original data
         epochs = epochs.copy()
+
+        # Check if the window size is greater than the epoch length
+        epoch_length = epochs.tmax - epochs.tmin
+        if self.window_size >= epoch_length:
+            return epochs
         
         # Get the sampling frequency of the epochs data
         sfreq = epochs.info['sfreq']

@@ -52,6 +52,9 @@ class RemoveArtifacts(BaseEstimator, TransformerMixin):
     new_raw : mne.io.Raw
         The raw data with artifacts removed.
     """
+    def __init__(self, n_components=15):
+        self.n_components = n_components
+
 
     def fit(self, X, y=None):
         return self
@@ -62,7 +65,7 @@ class RemoveArtifacts(BaseEstimator, TransformerMixin):
         raw = raw.set_eeg_reference('average')
 
         # Create ICA object
-        ica = ICA(n_components=15, random_state=97, max_iter="auto", method="infomax", fit_params=dict(extended=True)) 
+        ica = ICA(n_components=self.n_components, random_state=97, max_iter="auto", method="infomax", fit_params=dict(extended=True)) 
         ica.fit(raw)
 
         # Extract labels
@@ -135,7 +138,7 @@ class Epochify(BaseEstimator, TransformerMixin):
         The segmented epochs.
     """
 
-    def __init__(self, event_ids, channels, tmin=-1, tmax=4, baseline=None):
+    def __init__(self, event_ids, channels, tmin=-1, tmax=4, baseline=(-0.5, 0)):
         self.event_ids = event_ids
         self.channels = channels
         self.tmin = tmin
