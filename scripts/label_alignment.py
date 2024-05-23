@@ -38,7 +38,7 @@ class LabelAlignment:
                 aligned_events (ndarray): Aligned events.
     """
 
-    def __init__(self, target_epochs: mne.Epochs, concat=False):
+    def __init__(self, target_epochs: mne.Epochs, concat=True):
         """
         Initialize the LabelAlignment object.
 
@@ -203,7 +203,7 @@ class LabelAlignment:
 
         return aligned_epochs, aligned_events
     
-    def fit_transform(self, source_data, source_events):
+    def fit_transform(self, source_epochs):
         """
         Fits the model to the source data and events, and then transforms the source data.
 
@@ -214,6 +214,8 @@ class LabelAlignment:
         Returns:
             transformed_data (tuple): The transformed source data and events.
         """
+        source_data = source_epochs.get_data(copy=True)
+        source_events = source_epochs.events[:, -1]
         self.fit(source_data, source_events)
         return self.transform(source_data)
 

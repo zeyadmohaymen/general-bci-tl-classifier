@@ -31,7 +31,7 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
         The transformed epochs data with encoded events.
     """
 
-    def __init__(self, counter_class):
+    def __init__(self, counter_class="rest"):
         if counter_class not in ["rest", "other"]:
             raise ValueError("counter_class must be either 'rest' or 'other'")
         self.counter_class = counter_class
