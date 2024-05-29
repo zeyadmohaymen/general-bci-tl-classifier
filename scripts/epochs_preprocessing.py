@@ -265,10 +265,48 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         new_events = np.array(new_events)
         
         # Create a new epochs object with the segmented data and events
-        new_epochs = reconstruct_epochs(epochs, new_data, new_events)
+        # new_epochs = reconstruct_epochs(epochs, new_data, new_events)
 
         print("Applied Epochs Segmentation with", self.window_size, "s and", self.overlap*100, "% overlap")
-        print(new_epochs)
+        # print(new_epochs)
         
         # Return the new epochs object
-        return new_epochs
+        return new_data, new_events
+    
+class EpochsDecoder(BaseEstimator, TransformerMixin):
+    """
+    A transformer class for extracting data from epochs.
+
+    Parameters:
+    -----------
+    None
+
+    Methods:
+    --------
+    fit(X, y=None)
+        Fit the transformer to the data.
+
+    transform(epochs: Epochs)
+        Extract the data from the epochs.
+
+    Returns:
+    --------
+    data : ndarray
+        The extracted data and events from the epochs.
+    """
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, epochs):
+
+        if isinstance(epochs, Epochs):
+            print("Extracted Data from Epochs")
+            return epochs.get_data(copy=False), epochs.events
+        
+        elif isinstance(epochs, tuple):
+            if isinstance(epochs[0], np.ndarray) and isinstance(epochs[1], np.ndarray):
+                return epochs
+            
+        else:
+            raise ValueError("Invalid input type. Must be mne.Epochs or (np.ndarray, np.ndarray).")

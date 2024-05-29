@@ -124,6 +124,9 @@ venv.bak/
 datasets/
 pickled_data/
 
+# Results
+results/
+
 # Spyder project settings
 .spyderproject
 .spyproject
