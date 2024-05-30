@@ -1,5 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-from mne import Epochs, merge_events
+from mne import Epochs, EpochsArray, merge_events
 import numpy as np
 from scripts.utils import reconstruct_epochs
 
@@ -84,8 +84,8 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the selected epochs object
             selected_epochs.event_id = {"rest": 0, "feet": 1}
 
-            print("Epochs after event encoding [rest vs feet]:")
-            print(selected_epochs)
+            # print("Epochs after event encoding [rest vs feet]:")
+            # print(selected_epochs)
 
             return selected_epochs
         
@@ -109,8 +109,8 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the epochs object
             epochs.event_id = {"not feet": 0, "feet": 1}
 
-            print("Epochs after event encoding [not feet vs feet]:")
-            print(epochs)
+            # print("Epochs after event encoding [not feet vs feet]:")
+            # print(epochs)
 
             return epochs
             
@@ -168,7 +168,7 @@ class Cropper(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, epochs: Epochs):
-        print("Cropped Epochs to:", self.tmin, "s -", self.tmax, "s")
+        # print("Cropped Epochs to:", self.tmin, "s -", self.tmax, "s")
         return epochs.copy().crop(self.tmin, self.tmax)
     
 class EpochsSegmenter(BaseEstimator, TransformerMixin):
@@ -267,7 +267,7 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         # Create a new epochs object with the segmented data and events
         # new_epochs = reconstruct_epochs(epochs, new_data, new_events)
 
-        print("Applied Epochs Segmentation with", self.window_size, "s and", self.overlap*100, "% overlap")
+        # print("Applied Epochs Segmentation with", self.window_size, "s and", self.overlap*100, "% overlap")
         # print(new_epochs)
         
         # Return the new epochs object
@@ -300,8 +300,8 @@ class EpochsDecoder(BaseEstimator, TransformerMixin):
     
     def transform(self, epochs):
 
-        if isinstance(epochs, Epochs):
-            print("Extracted Data from Epochs")
+        if isinstance(epochs, Epochs) or isinstance(epochs, EpochsArray):
+            # print("Extracted Data from Epochs")
             return epochs.get_data(copy=False), epochs.events
         
         elif isinstance(epochs, tuple):

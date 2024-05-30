@@ -214,7 +214,7 @@ class LabelAlignment:
         Returns:
             transformed_data (tuple): The transformed source data and events.
         """
-        print("Aligning source data to target data...")
+        # print("Aligning source data to target data...")
         self.fit(source_data, source_events)
         return self.transform(source_data)
 
