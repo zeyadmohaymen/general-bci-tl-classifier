@@ -2,6 +2,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from mne import Epochs, EpochsArray, merge_events
 import numpy as np
 from scripts.utils import reconstruct_epochs
+import logging
+logger = logging.getLogger('epochs-preprocessing')
 
 class EventsEncoder(BaseEstimator, TransformerMixin):
     """
@@ -84,8 +86,7 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the selected epochs object
             selected_epochs.event_id = {"rest": 0, "feet": 1}
 
-            # print("Epochs after event encoding [rest vs feet]:")
-            # print(selected_epochs)
+            logger.info(f"Encoded events to 'rest vs feet'")
 
             return selected_epochs
         
@@ -109,8 +110,7 @@ class EventsEncoder(BaseEstimator, TransformerMixin):
             # Update the event IDs in the epochs object
             epochs.event_id = {"not feet": 0, "feet": 1}
 
-            # print("Epochs after event encoding [not feet vs feet]:")
-            # print(epochs)
+            logger.info(f"Encoded events to 'not feet vs feet'")
 
             return epochs
             
@@ -160,15 +160,15 @@ class Cropper(BaseEstimator, TransformerMixin):
         The cropped epochs.
     """
 
-    def __init__(self, tmin=0.5, tmax=3.5):
+    def __init__(self, tmin=0.5, length=3):
         self.tmin = tmin
-        self.tmax = tmax
+        self.tmax = tmin + length
 
     def fit(self, X, y=None):
         return self
     
     def transform(self, epochs: Epochs):
-        # print("Cropped Epochs to:", self.tmin, "s -", self.tmax, "s")
+        logger.info(f"Cropped epochs from {self.tmin}s to {self.tmax}s")
         return epochs.copy().crop(self.tmin, self.tmax)
     
 class EpochsSegmenter(BaseEstimator, TransformerMixin):
@@ -267,8 +267,7 @@ class EpochsSegmenter(BaseEstimator, TransformerMixin):
         # Create a new epochs object with the segmented data and events
         # new_epochs = reconstruct_epochs(epochs, new_data, new_events)
 
-        # print("Applied Epochs Segmentation with", self.window_size, "s and", self.overlap*100, "% overlap")
-        # print(new_epochs)
+        logger.info(f"Segmented epochs into windows of {self.window_size}s with {self.overlap * 100}% overlap")
         
         # Return the new epochs object
         return new_data, new_events

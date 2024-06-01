@@ -5,6 +5,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from mne import concatenate_epochs, set_log_level
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
+logger = logging.getLogger('grid-search')
 
 def same_subject_evaluation(data):
     # Preprocessing pipeline
@@ -35,6 +37,7 @@ def same_subject_evaluation(data):
 
             # Save the results to a CSV file
             results[dataset_name][subject_id].to_csv(f'results/same_subject/{dataset_name}/{subject_id}.csv', index=False)
+            logger.info(f"Subject {subject_id} results saved to results/same_subject/{dataset_name}/{subject_id}.csv")
 
             for param, acc in params_acc_dict.items():
                 if param not in params_accs[dataset_name]:
@@ -66,7 +69,7 @@ def same_subject_evaluation(data):
 
     return results
 
-def cross_subject_evaluation(data):
+def cross_subject_evaluation(data, selection='all'):
     # Preprocessing pipeline
     pipe = create_preprocessing_pipeline()
     pipe_grid = create_preprocessing_grid()
@@ -76,6 +79,9 @@ def cross_subject_evaluation(data):
     clf_grid = svm_grid()
 
     results = {}
+
+    if selection != 'all' and selection in data:
+        data = {selection: data[selection]}
 
     # Each dataset
     for dataset_name, dataset in data.items():
@@ -91,6 +97,7 @@ def cross_subject_evaluation(data):
 
         # Save the results to a CSV file
         results[dataset_name].to_csv(f'results/cross_subject/{dataset_name}.csv', index=False)
+        logger.info(f"Dataset {dataset_name} results saved to results/cross_subject/{dataset_name}.csv")
 
         # Save the ROC curves to a PDF file
         with PdfPages(f'results/cross_subject/{dataset_name}_roc.pdf') as pdf:
@@ -125,6 +132,7 @@ def cross_dataset_evaluation(data):
 
         # Save the results to a CSV file
         dataset_results.to_csv(f'results/cross_dataset/{dataset_name}.csv', index=False)
+        logger.info(f"Test dataset {dataset_name} results saved to results/cross_dataset/{dataset_name}.csv")
 
         # Save the ROC curves to a PDF file
         with PdfPages(f'results/cross_dataset/{dataset_name}_roc.pdf') as pdf:
@@ -138,16 +146,28 @@ def cross_dataset_evaluation(data):
     return results
 
 # Main
-if __name__ == '__main__':
+def main():
     set_log_level(verbose='CRITICAL')
+    logging.basicConfig(filename="gridsearch.log",
+                    format='%(asctime)s %(message)s',
+                    level=logging.INFO)
 
+    logger.info('Grid search started...')
     data = load_data()
+    logger.info('Data loaded.')
 
-    print('Starting same-subject evaluation...')
-    same_subject_results = same_subject_evaluation(data.copy())
-    print('Starting cross-subject evaluation...')
-    cross_subject_results = cross_subject_evaluation(data.copy())
-    print('Starting cross-dataset evaluation...')
-    cross_dataset_results = cross_dataset_evaluation(data.copy())
+    # logger.info('Starting same-subject search...')
+    # same_subject_results = same_subject_evaluation(data.copy())
 
-    print('Done!')    
+    selection = 'physionet'
+    logger.info(f'Starting cross-subject search on {selection}...')
+    cross_subject_results = cross_subject_evaluation(data.copy(), selection)
+
+    # logger.info('Starting cross-dataset search...')
+    # cross_dataset_results = cross_dataset_evaluation(data.copy())
+
+    logger.info('Grid search complete.')
+
+
+if __name__ == '__main__':
+    main()

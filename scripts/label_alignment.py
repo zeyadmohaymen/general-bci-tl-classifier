@@ -2,6 +2,8 @@ import mne
 import numpy as np
 from scipy.linalg import fractional_matrix_power
 from pyriemann.estimation import Covariances
+import logging
+logger = logging.getLogger('label-alignment')
 
 class LabelAlignment:
     """
@@ -200,6 +202,8 @@ class LabelAlignment:
         if self.concat:
             aligned_epochs = np.concatenate([aligned_epochs, self.target_data])
             aligned_events = np.concatenate([self.source_events, self.target_events])
+
+        logger.info("Source data aligned to target data.")
 
         return aligned_epochs, aligned_events
     

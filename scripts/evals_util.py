@@ -12,6 +12,8 @@ from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+logger = logging.getLogger('grid-search')
 
 def create_preprocessing_pipeline():
     return Pipeline([
@@ -27,18 +29,18 @@ def create_preprocessing_grid():
     return ParameterGrid([
         {
             'encoder__counter_class': ['rest', 'other'],
-            'cropper__tmax': [2.5, 3.5],
+            'cropper__length': [2, 3],
         },
         {
             'encoder__counter_class': ['rest', 'other'],
-            'cropper__tmax': [2.5],
+            'cropper__length': [2],
             'segmenter': [EpochsSegmenter()],
             'segmenter__window_size': [1],
             'segmenter__overlap': [0.2, 0.5]
         },
         {
             'encoder__counter_class': ['rest', 'other'],
-            'cropper__tmax': [3.5],
+            'cropper__length': [3],
             'segmenter': [EpochsSegmenter()],
             'segmenter__window_size': [1, 2],
             'segmenter__overlap': [0.2, 0.5]
@@ -113,54 +115,56 @@ def grid_search_cv_la(pipe, pipe_grid, clf, clf_grid, epochs, cv, la_split_ratio
 
         #* Each classifier
         for clf_params in clf_grid:
+            logger.info(f"Processing {pipe_params} - {clf_params} parameter combination...")
             clf.set_params(**clf_params)
 
             #* Each fold
             cv_results = _cv_with_label_alignment(preprocessed_data, preprocessed_events, clf=clf, cv=cv, cv_groups=cv_groups, la_split_ratio=la_split_ratio, calib_from=calib_from, roc=roc)
+            logger.info(f"Cross-validation results returned with {cv_results['acc'] * 100:.2f}% accuracy")
 
             if avg_splits == False:
                 for i in range(len(cv_results['acc'])):
                     results[i] = pd.concat([results[i], pd.DataFrame({
                         'Counter class': ['feet vs rest' if pipe_params['encoder__counter_class'] == 'rest' else 'feet vs no feet'],
-                        'Epoch duration (s)': [pipe_params['cropper__tmax'] - 0.5],
+                        'Epoch duration (s)': [pipe_params['cropper__length']],
                         'Segmentation': ['No' if pipe_params.get('segmenter', None) == None else 'Yes'],
                         'Window size (s)': [pipe_params.get('segmenter__window_size', '-')],
                         'Overlap (%)': [pipe_params.get('segmenter__overlap', '-')],
                         'SVM (kernel_C)': [f"{clf_params['svm__kernel']}_{clf_params['svm__C']}"],
                         'Accuracy': [cv_results['acc'][i]],
                         'F1 score': [cv_results['f1'][i]],
-                        'Train duration (s)': [cv_results['durations']['train'][i] * (pipe_params['cropper__tmax'] - 0.5)],
-                        'Calibration duration (s)': [cv_results['durations']['calib'][i] * (pipe_params['cropper__tmax'] - 0.5)],
-                        'Test duration (s)': [cv_results['durations']['test'][i] * (pipe_params['cropper__tmax'] - 0.5)],
+                        'Train duration (s)': [cv_results['durations']['train'][i] * (pipe_params['cropper__length'])],
+                        'Calibration duration (s)': [cv_results['durations']['calib'][i] * (pipe_params['cropper__length'])],
+                        'Test duration (s)': [cv_results['durations']['test'][i] * (pipe_params['cropper__length'])],
                         'ROC AUC': [cv_results['auc'][i]]
                     })], ignore_index=True)
 
                     if roc:
                         fig, ax = create_roc_plot([cv_results['fprs'][i]], [cv_results['tprs'][i]])
                         fig.suptitle(f"{results[i].iloc[-1]['Counter class']} - {results[i].iloc[-1]['Epoch duration (s)']} - {results[i].iloc[-1]['Segmentation']} {results[i].iloc[-1]['Window size (s)']} {results[i].iloc[-1]['Overlap (%)']} - {results[i].iloc[-1]['SVM (kernel_C)']}")
-                        figs[i][f"{pipe_params['encoder__counter_class']}_{pipe_params['cropper__tmax']-0.5}_{pipe_params.get('segmenter', 'No')}_{'-' if pipe_params.get('segmenter', 'No') == 'No' else pipe_params.get('segmenter__window_size', '-')}_{pipe_params.get('segmenter__overlap', '-')}_{clf_params['svm__kernel']}_{clf_params['svm__C']}"] = fig
+                        figs[i][f"{pipe_params['encoder__counter_class']}_{pipe_params['cropper__length']}_{pipe_params.get('segmenter', 'No')}_{'-' if pipe_params.get('segmenter', 'No') == 'No' else pipe_params.get('segmenter__window_size', '-')}_{pipe_params.get('segmenter__overlap', '-')}_{clf_params['svm__kernel']}_{clf_params['svm__C']}"] = fig
                         plt.close(fig)
             else:
 
                 results = pd.concat([results, pd.DataFrame({
                     'Counter class': ['feet vs rest' if pipe_params['encoder__counter_class'] == 'rest' else 'feet vs no feet'],
-                    'Epoch duration (s)': [pipe_params['cropper__tmax'] - 0.5],
+                    'Epoch duration (s)': [pipe_params['cropper__length']],
                     'Segmentation': ['No' if pipe_params.get('segmenter', None) == None else 'Yes'],
                     'Window size (s)': [pipe_params.get('segmenter__window_size', '-')],
                     'Overlap (%)': [pipe_params.get('segmenter__overlap', '-')],
                     'SVM (kernel_C)': [f"{clf_params['svm__kernel']}_{clf_params['svm__C']}"],
                     'Accuracy': [np.mean(cv_results['acc'])],
                     'F1 score': [np.mean(cv_results['f1'])],
-                    'Train duration (s)': [np.mean(np.array(cv_results['durations']['train']) * (pipe_params['cropper__tmax'] - 0.5))],
-                    'Calibration duration (s)': [np.mean(np.array(cv_results['durations']['calib']) * (pipe_params['cropper__tmax'] - 0.5))],
-                    'Test duration (s)': [np.mean(np.array(cv_results['durations']['test']) * (pipe_params['cropper__tmax'] - 0.5))],
+                    'Train duration (s)': [np.mean(np.array(cv_results['durations']['train']) * (pipe_params['cropper__length']))],
+                    'Calibration duration (s)': [np.mean(np.array(cv_results['durations']['calib']) * (pipe_params['cropper__length']))],
+                    'Test duration (s)': [np.mean(np.array(cv_results['durations']['test']) * (pipe_params['cropper__length']))],
                     'ROC AUC': [np.mean(cv_results['auc'])]
                 })], ignore_index=True)
 
                 if roc:
                     fig, ax = create_roc_plot(cv_results['fprs'], cv_results['tprs'])
                     fig.suptitle(f"{results.iloc[-1]['Counter class']} - {results.iloc[-1]['Epoch duration (s)']} - {results.iloc[-1]['Segmentation']} {results.iloc[-1]['Window size (s)']} {results.iloc[-1]['Overlap (%)']} - {results.iloc[-1]['SVM (kernel_C)']}")
-                    figs[f"{pipe_params['encoder__counter_class']}_{pipe_params['cropper__tmax']-0.5}_{pipe_params.get('segmenter', 'No')}_{'-' if pipe_params.get('segmenter', 'No') == 'No' else pipe_params.get('segmenter__window_size', '-')}_{pipe_params.get('segmenter__overlap', '-')}_{clf_params['svm__kernel']}_{clf_params['svm__C']}"] = fig
+                    figs[f"{pipe_params['encoder__counter_class']}_{pipe_params['cropper__length']}_{pipe_params.get('segmenter', 'No')}_{'-' if pipe_params.get('segmenter', 'No') == 'No' else pipe_params.get('segmenter__window_size', '-')}_{pipe_params.get('segmenter__overlap', '-')}_{clf_params['svm__kernel']}_{clf_params['svm__C']}"] = fig
                     plt.close(fig)
 
                 if acc_dict:
@@ -174,9 +178,15 @@ def _cv_with_label_alignment(data, events, clf, cv, la_split_ratio, cv_groups=No
     # Validate calibration source
     if calib_from not in ["train", "test"]:
         raise ValueError("calib_from must be either 'train' or 'test'")
+    
+    fold = 1
+    n_splits = cv.get_n_splits(data)
 
     split_results = dict(acc=[], f1=[], durations=dict(train=[], calib=[], test=[]), fprs=[], tprs=[], auc=[])
     for train_idx, test_idx in cv.split(data, groups=cv_groups):
+        logger.info(f"Fitting label alignment and classifier for fold {fold}/{n_splits}")
+        fold += 1
+
         train_data, train_events = data[train_idx], events[train_idx]
         test_data, test_events = data[test_idx], events[test_idx]
 
@@ -191,6 +201,7 @@ def _cv_with_label_alignment(data, events, clf, cv, la_split_ratio, cv_groups=No
         aligned_data, aligned_events = la.fit_transform(train_data, train_events)
 
         # Classifier
+        logger.info("Fitting classifier...")
         clf.fit(aligned_data, aligned_events)
 
         y_pred = clf.predict(test_data)

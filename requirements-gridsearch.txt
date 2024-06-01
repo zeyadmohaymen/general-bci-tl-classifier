@@ -1,0 +1,4 @@
+pyriemann # numpy, scipy, scikit-learn part of the dependencies
+mne
+mne_icalabel
+pandas

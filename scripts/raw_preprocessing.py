@@ -34,7 +34,7 @@ class FilterRaw(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, raw: Raw):
-        print("Applying bandpass filter to raw data...")
+        # print("Applying bandpass filter to raw data...")
         new_raw = raw.copy().filter(self.l_freq, self.h_freq, fir_design='firwin')
         return new_raw
     
@@ -62,7 +62,10 @@ class RemoveArtifacts(BaseEstimator, TransformerMixin):
     def transform(self, raw: Raw):
         print("Removing artifacts from raw data...")
         # Apply common average reference
-        raw = raw.set_eeg_reference('average')
+        raw = raw.copy().set_eeg_reference('average')
+
+        # Filter from 1-100 Hz
+        raw = raw.filter(1, 100, fir_design='firwin')
 
         # Create ICA object
         ica = ICA(n_components=self.n_components, random_state=97, max_iter="auto", method="infomax", fit_params=dict(extended=True)) 
@@ -107,7 +110,7 @@ class SelectChannels(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, raw: Raw):
-        print("Selecting specific channels from raw data...")
+        # print("Selecting specific channels from raw data...")
         selected_channels = pick_types(raw.info, include=self.channels, exclude="bads")
         new_raw = raw.copy().pick_channels(selected_channels)
         return new_raw
@@ -138,7 +141,7 @@ class Epochify(BaseEstimator, TransformerMixin):
         The segmented epochs.
     """
 
-    def __init__(self, event_ids, channels, tmin=-1, tmax=4, baseline=(-0.5, 0)):
+    def __init__(self, event_ids=[0,1], channels=None, tmin=-1, tmax=4, baseline=(-0.5, 0)):
         self.event_ids = event_ids
         self.channels = channels
         self.tmin = tmin
@@ -149,8 +152,10 @@ class Epochify(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, raw: Raw):
-        print("Segmenting raw data into epochs...")
-        selected_channels = pick_types(raw.info, include=self.channels, exclude="bads")
+        # print("Segmenting raw data into epochs...")
+        selected_channels = None
+        if self.channels:
+            selected_channels = pick_types(raw.info, include=self.channels, exclude="bads")
         epochs = Epochs(raw, event_id=self.event_ids, tmin=self.tmin, tmax=self.tmax, picks=selected_channels, baseline=self.baseline, preload=True)
         return epochs
     
