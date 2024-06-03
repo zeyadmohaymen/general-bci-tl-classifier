@@ -127,6 +127,7 @@ datasets/
 
 # Results
 results/
+results_old/
 
 # Spyder project settings
 .spyderproject
